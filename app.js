@@ -88,7 +88,7 @@
   function saveDraft(id, d) { try { localStorage.setItem(draftKey(id), JSON.stringify(d)); } catch { /* storage full: keep going */ } }
   function starRow(n, size) {
     let s = "";
-    for (let i = 1; i <= 3; i++) s += `<span class="star ${i <= n ? "on" : ""} ${size || ""}">★</span>`;
+    for (let i = 1; i <= 3; i++) s += `<span class="star ${i <= n ? "on" : ""} ${size || ""}">${Icon("star")}</span>`;
     return `<span class="stars" aria-label="${n} of 3 stars">${s}</span>`;
   }
   /* A scalloped sticker badge with something in the middle. */
@@ -107,18 +107,20 @@
     return `<div class="sticker ${cls || ""}"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="${d}Z" class="sticker-edge"/><circle cx="100" cy="100" r="66" class="sticker-dash"/></svg><div class="sticker-in">${inner}</div></div>`;
   }
   function ticker(words) {
-    const run = words.map((w) => `<span>${esc(w)}</span><i>★</i>`).join("");
+    const run = words.map((w) => `<span>${esc(w)}</span><i>${Icon("star")}</i>`).join("");
     return `<div class="ticker" aria-hidden="true"><div class="ticker-track">${run}${run}${run}${run}</div></div>`;
   }
   const CLOUD = `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M20 50a16 16 0 0 1 4-31 22 22 0 0 1 40-8 18 18 0 0 1 30 10 15 15 0 0 1 6 29z" fill="#fff"/></svg>`;
   const clouds = () => `<div class="clouds" aria-hidden="true"><i class="c1">${CLOUD}</i><i class="c2">${CLOUD}</i><i class="c3">${CLOUD}</i></div>`;
+  const word = (t) => `<span class="sticker-word">${esc(t)}</span>`;
+  const badgeOf = (ses) => ses.badge || `Day ${pad2(ses.day || 1)}`;
   const ARROW = `<span class="arr" aria-hidden="true">→</span>`;
   const pad2 = (n) => String(n).padStart(2, "0");
   const SUBJ = { literacy: "Literacy", numeracy: "Maths" };
 
-  function loading(msg) { view(`<section class="screen center">${sticker("⭐", "spin small")}<p class="eyebrow">${esc(msg || "Loading...")}</p></section>`); }
+  function loading(msg) { view(`<section class="screen center">${sticker(Icon("star", "sticker-icon"), "spin small")}<p class="eyebrow">${esc(msg || "Loading...")}</p></section>`); }
   function failure(msg, retry) {
-    view(`<section class="screen center"><div class="big-emoji">🛰️</div><h1 class="display">Hmm.</h1><p>${esc(msg)}</p>
+    view(`<section class="screen center">${sticker(Icon("offline", "sticker-icon"), "big")}<h1 class="display">Hmm.</h1><p>${esc(msg)}</p>
       <div class="row"><button class="btn primary" data-retry>Try again</button><button class="btn ghost" data-settings>Settings</button></div></section>`);
     $("[data-retry]").onclick = retry;
     $("[data-settings]").onclick = settings;
@@ -143,7 +145,7 @@
   function pickKid() {
     view(`<section class="screen center pick">
       ${clouds()}
-      <p class="eyebrow">★ Daily Missions</p>
+      <p class="eyebrow">${Icon("star")} Daily Missions</p>
       <h1 class="display">Who's<br>practising?</h1>
       <div class="kid-grid">${kids.map((k, n) => `<button class="kid" data-kid="${esc(k.id)}" style="--me:${esc(k.colour || "#8fd0f5")};--tilt:${n % 2 ? 3 : -3}deg"><span class="kid-num">${pad2(n + 1)}</span>${esc(k.name)}<span class="kid-go">That's me ${ARROW}</span></button>`).join("")}</div>
       <button class="link" data-settings>Settings</button></section>`);
@@ -189,7 +191,7 @@
           <div><h2 class="display">${esc(session.title)}</h2>
           <p>${rich(session.intro || "")}</p>
           <button class="btn primary big" data-go>${draft ? "Keep going" : "Start mission"} ${ARROW}</button></div>
-          ${sticker(`<span class="emoji">${esc(session.emoji || "🚀")}</span>`, "wobble")}
+          ${sticker(word(badgeOf(session)), "wobble")}
         </div></article>`;
     } else {
       card = `<article class="mission done">
@@ -198,7 +200,7 @@
           <div><h2 class="display">${doneToday ? "All done for today!" : "No mission yet"}</h2>
           <p>${session ? `Your next mission unlocks on ${esc(prettyDate(session.date))}.` : "Your next mission is being made. Check back soon."}</p>
           ${last ? `<button class="btn ghost" data-last>See my last feedback ${ARROW}</button>` : ""}</div>
-          ${sticker(`<span class="emoji">${doneToday ? "🎉" : "🌙"}</span>`)}
+          ${sticker(doneToday ? word("All done!") : Icon("moon", "sticker-icon"))}
         </div></article>`;
     }
     const words = [`${stars} stars`, `${streak} day streak`, `${hist.length} missions`];
@@ -206,7 +208,7 @@
     view(`<section class="screen home">
       <div class="hero">
         ${clouds()}
-        <header class="top"><span class="logo">★ Daily Missions</span><button class="icon-btn" data-settings aria-label="Settings">⚙️</button></header>
+        <header class="top"><span class="logo">${Icon("star")} Daily Missions</span><button class="icon-btn" data-settings aria-label="Settings">${Icon("settings")}</button></header>
         <p class="eyebrow">● ${esc(prettyDate(today()))}</p>
         <h1 class="display mega">Hi<br>${esc(kid.name)}!</h1>
         ${goal ? `<p class="goal-line"><b>My goal:</b> ${esc(goal.ican)}</p>` : ""}
@@ -269,13 +271,13 @@
       const it = items[i];
       const dots = items.map((x, n) => `<span class="seg ${n < i ? "done" : ""} ${n === i ? "now" : ""} ${x.boss ? "boss" : ""}"></span>`).join("");
       view(`<section class="screen ${esc(session.subject)}" id="session">
-        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div class="segs">${dots}</div><span class="pill">${pad2(i + 1)} / ${pad2(items.length)}</span></header>
+        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">${Icon("home")}</button><div class="segs">${dots}</div><span class="pill">${pad2(i + 1)} / ${pad2(items.length)}</span></header>
         <article class="item ${it.boss ? "boss" : ""}">
-          ${it.boss ? `<div class="boss-tag">⚡ Boss level</div>` : `<p class="eyebrow">Question ${pad2(i + 1)}</p>`}
+          ${it.boss ? `<div class="boss-tag">${Icon("bolt")} Boss level</div>` : `<p class="eyebrow">Question ${pad2(i + 1)}</p>`}
           ${it.passage ? `<div class="passage">${rich(it.passage)}</div>` : ""}
           ${it.prompt ? `<p class="prompt">${rich(it.prompt)}</p>` : ""}
           <div class="answer"></div>
-          ${it.hint ? `<div class="hint-wrap"><button class="btn small ghost" data-hint>💡 Need a hint?</button><p class="hint" hidden>${rich(it.hint)}</p></div>` : ""}
+          ${it.hint ? `<div class="hint-wrap"><button class="btn small ghost" data-hint>${Icon("bulb")} Need a hint?</button><p class="hint" hidden>${rich(it.hint)}</p></div>` : ""}
         </article>
         <footer class="nav"><button class="btn ghost" data-back>← Back</button><button class="btn primary" data-next>${i === items.length - 1 ? "Finish" : "Next"} ${ARROW}</button></footer>
       </section>`);
@@ -293,13 +295,13 @@
     function intro() {
       const t = session.tip;
       view(`<section class="screen ${esc(session.subject)}" id="session">
-        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div></div><span class="pill">${esc(SUBJ[session.subject] || "")} · Day ${esc(session.day)}</span></header>
+        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">${Icon("home")}</button><div></div><span class="pill">${esc(SUBJ[session.subject] || "")} · Day ${esc(session.day)}</span></header>
         <div class="intro">
-          ${sticker(`<span class="emoji">${esc(session.emoji || "🚀")}</span>`, "wobble big")}
+          ${sticker(word(badgeOf(session)), "wobble big")}
           <p class="eyebrow">Today's mission</p>
           <h1 class="display mega">${esc(session.title)}</h1>
           <p class="lead">${rich(session.intro || "")}</p>
-          ${t ? `<div class="tip"><span class="tip-tag">💡 Tip</span><h3 class="display">${esc(t.title || "Tip")}</h3><p>${rich(t.text || "")}</p>${t.example ? `<p class="example">${rich(t.example)}</p>` : ""}</div>` : ""}
+          ${t ? `<div class="tip"><span class="tip-tag">${Icon("bulb")} Tip</span><h3 class="display">${esc(t.title || "Tip")}</h3><p>${rich(t.text || "")}</p>${t.example ? `<p class="example">${rich(t.example)}</p>` : ""}</div>` : ""}
         </div>
         <footer class="nav"><span></span><button class="btn primary big" data-next>Let's go ${ARROW}</button></footer></section>`);
       $("[data-home]").onclick = () => { tick(); home(); };
@@ -352,7 +354,7 @@
         case "draw": {
           const strokes = d.strokes[it.id] || (d.strokes[it.id] = []);
           const opts = padOpts(it);
-          if (it.type === "write") box.insertAdjacentHTML("beforeend", `<p class="pencil-note">✏️ Use your Apple Pencil</p>`);
+          if (it.type === "write") box.insertAdjacentHTML("beforeend", `<p class="pencil-note">${Icon("pencil")} Use your Apple Pencil</p>`);
           pads.push(Pad.create(box, opts, strokes, () => saveDraft(session.id, d)));
           break;
         }
@@ -365,11 +367,11 @@
       const missing = items.filter((it) => it.type !== "read" && !answered(it)).map((it, n) => items.indexOf(it) + 1);
       view(`<section class="screen center" id="session">
         ${clouds()}
-        ${sticker('<span class="emoji">🏁</span>', "wobble big")}
+        ${sticker(word("Done!"), "wobble big")}
         <p class="eyebrow">Nice one</p><h1 class="display mega">Mission<br>complete!</h1>
         ${missing.length ? `<p class="warn">You haven't answered question${missing.length > 1 ? "s" : ""} ${missing.join(", ")} yet. You can go back, or send it anyway.</p>` : ""}
         <p class="lead"><b>How did today feel?</b></p>
-        <div class="rating">${[["easy", "😎", "Easy"], ["ok", "🙂", "Just right"], ["tricky", "🤔", "Tricky"]].map(([v, e, l]) =>
+        <div class="rating">${[["easy", Icon("easy"), "Easy"], ["ok", Icon("ok"), "Just right"], ["tricky", Icon("tricky"), "Tricky"]].map(([v, e, l]) =>
           `<button class="rate ${d.rating === v ? "on" : ""}" data-rate="${v}" style="--tilt:${v === "easy" ? -3 : v === "tricky" ? 3 : 0}deg"><span>${e}</span>${l}</button>`).join("")}</div>
         <div class="row"><button class="btn ghost" data-back>← Back</button><button class="btn primary big" data-send ${d.rating ? "" : "disabled"}>Send to Claude ${ARROW}</button></div>
         <p class="error" hidden></p></section>`);
@@ -433,7 +435,7 @@
     const began = Date.now();
     view(`<section class="screen center">
       ${clouds()}
-      ${sticker('<span class="emoji">✏️</span>', "spin big")}
+      ${sticker(Icon("pencil", "sticker-icon"), "wobble big")}
       <p class="eyebrow">Sent!</p>
       <h1 class="display">Claude is marking<br>your work</h1>
       <p class="lead">This takes a few minutes. You can wait here, or close the app and come back.</p>
@@ -458,7 +460,7 @@
   /* ---------- feedback ---------- */
   function feedback(fb, fresh) {
     if (fb.status === "error") {
-      view(`<section class="screen center">${sticker('<span class="emoji">📮</span>', "big")}<h1 class="display">Your work is<br>safely in!</h1>
+      view(`<section class="screen center">${sticker(Icon("mail", "sticker-icon"), "big")}<h1 class="display">Your work is<br>safely in!</h1>
         <p class="lead">${esc(fb.kidMessage || "Claude couldn't mark this one, so Dad will check it.")}</p>
         <button class="btn primary" data-home>Back to home</button></section>`);
       $("[data-home]").onclick = home;
@@ -478,7 +480,7 @@
       <div class="wrap">
       ${items.length ? `<ol class="marks">${items.map(([id, v]) =>
         `<li class="${esc(v.result)}"><span class="num">${pad2(id.replace(/^q/, ""))}</span><p>${rich(v.comment || "")}</p><span class="verdict">${labels[v.result] || ""}</span></li>`).join("")}</ol>` : ""}
-      ${fb.goal && fb.goal.next ? `<div class="tip"><span class="tip-tag">${fb.goal.status === "achieved" ? "🏆 Goal achieved" : "🔭 Next time"}</span><p>${rich(fb.goal.next)}</p></div>` : ""}
+      ${fb.goal && fb.goal.next ? `<div class="tip"><span class="tip-tag">${fb.goal.status === "achieved" ? Icon("trophy") + " Goal achieved" : Icon("flag") + " Next time"}</span><p>${rich(fb.goal.next)}</p></div>` : ""}
       </div>
       <footer class="nav"><span></span><button class="btn primary" data-home>Back to home ${ARROW}</button></footer>
     </section>`);
@@ -505,7 +507,7 @@
   function settings(first) {
     const c = cfg();
     view(`<section class="screen narrow">
-      <header class="top"><h1 class="display">${first ? "Set up this iPad" : "Settings"}</h1>${first ? "" : `<button class="icon-btn" data-close aria-label="Close">✖️</button>`}</header>
+      <header class="top"><h1 class="display">${first ? "Set up this iPad" : "Settings"}</h1>${first ? "" : `<button class="icon-btn" data-close aria-label="Close">${Icon("close")}</button>`}</header>
       <p class="muted">For grown ups. The key is saved on this iPad only.</p>
       <label class="setting">GitHub key<input type="password" data-token autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${c.token ? "Saved (paste a new one to replace it)" : "github_pat_..."}"></label>
       <label class="setting">Data repo<input data-repo autocapitalize="off" spellcheck="false" value="${esc(c.repo)}"></label>
@@ -528,7 +530,7 @@
         kids = null;
         const list = await readJSON("kids/index.json");
         if (!list) throw new ApiError(404);
-        st.textContent = "Connected. ✅";
+        st.textContent = "Connected.";
         setTimeout(start, 600);
       } catch (e) { st.textContent = problem(e); }
     };

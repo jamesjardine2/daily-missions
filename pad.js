@@ -186,13 +186,13 @@
 
     function button(label, title, fn, cls) {
       const b = document.createElement("button");
-      b.type = "button"; b.className = "tool " + (cls || ""); b.textContent = label; b.title = title;
+      b.type = "button"; b.className = "tool " + (cls || ""); b.innerHTML = label; b.title = title;
       b.setAttribute("aria-label", title);
       b.addEventListener("click", fn);
       tools.append(b);
       return b;
     }
-    const penBtn = button("✏️", "Pencil", () => setMode("pen"), "on");
+    const penBtn = button(Icon("pencil"), "Pencil", () => setMode("pen"), "on");
     const swatches = [];
     if (opts.colours) {
       for (const c of ["#1f2a44", "#ff4f8b", "#2b8fe0", "#16a34a", "#f5a300"]) {
@@ -202,10 +202,10 @@
         swatches.push(sw);
       }
     }
-    const eraseBtn = button("🧽", "Rubber", () => setMode("erase"));
-    button("↩️", "Undo", () => { if (strokes.length) { redo.push(strokes.pop()); render(); onChange && onChange(); } });
-    button("↪️", "Redo", () => { if (redo.length) { strokes.push(redo.pop()); render(); onChange && onChange(); } });
-    button("🗑️", "Start again", () => {
+    const eraseBtn = button(Icon("eraser"), "Rubber", () => setMode("erase"));
+    button(Icon("undo"), "Undo", () => { if (strokes.length) { redo.push(strokes.pop()); render(); onChange && onChange(); } });
+    button(Icon("redo"), "Redo", () => { if (redo.length) { strokes.push(redo.pop()); render(); onChange && onChange(); } });
+    button(Icon("trash"), "Start again", () => {
       if (!strokes.length) return;
       if (confirm("Rub out everything on this page?")) { strokes.length = 0; redo.length = 0; render(); onChange && onChange(); }
     }, "right");
