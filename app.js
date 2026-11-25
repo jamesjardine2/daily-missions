@@ -114,6 +114,23 @@
   const clouds = () => `<div class="clouds" aria-hidden="true"><i class="c1">${CLOUD}</i><i class="c2">${CLOUD}</i><i class="c3">${CLOUD}</i></div>`;
   const word = (t) => `<span class="sticker-word">${esc(t)}</span>`;
   const badgeOf = (ses) => ses.badge || `Day ${pad2(ses.day || 1)}`;
+  /* The mission's cartoon (sessions/<id>.svg), shown as an image so nothing in it can run. */
+  const artCache = {};
+  async function artFor(ses) {
+    if (ses.id in artCache) return artCache[ses.id];
+    let url = null;
+    try {
+      const svg = await readText(`kids/${kid.id}/sessions/${ses.id}.svg`);
+      if (svg && /^\s*<svg[\s>]/.test(svg)) url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    } catch { /* no cartoon: the sticker shows the word */ }
+    return (artCache[ses.id] = url);
+  }
+  /* Sticker for a mission: the cartoon with the word as a tilted label, or just the word. */
+  function missionSticker(ses, cls) {
+    const art = artCache[ses.id];
+    if (!art) return sticker(word(badgeOf(ses)), cls);
+    return `<div class="art-wrap">${sticker(`<img class="sticker-art" src="${art}" alt="">`, cls)}<span class="art-label">${esc(badgeOf(ses))}</span></div>`;
+  }
   const ARROW = `<span class="arr" aria-hidden="true">→</span>`;
   const pad2 = (n) => String(n).padStart(2, "0");
   const SUBJ = { literacy: "Literacy", numeracy: "Maths" };
@@ -168,6 +185,7 @@
         return feedback(fb, true);
       }
       if (state.nextSession) session = await readJSON(`kids/${kid.id}/sessions/${state.nextSession}.json`);
+      if (session) await artFor(session);
       const h = state.history || [];
       if (h.length) last = h[h.length - 1];
     } catch (e) { return failure(problem(e), home); }
@@ -191,7 +209,7 @@
           <div><h2 class="display">${esc(session.title)}</h2>
           <p>${rich(session.intro || "")}</p>
           <button class="btn primary big" data-go>${draft ? "Keep going" : "Start mission"} ${ARROW}</button></div>
-          ${sticker(word(badgeOf(session)), "wobble")}
+          ${missionSticker(session, "wobble")}
         </div></article>`;
     } else {
       card = `<article class="mission done">
@@ -297,7 +315,7 @@
       view(`<section class="screen ${esc(session.subject)}" id="session">
         <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">${Icon("home")}</button><div></div><span class="pill">${esc(SUBJ[session.subject] || "")} · Day ${esc(session.day)}</span></header>
         <div class="intro">
-          ${sticker(word(badgeOf(session)), "wobble big")}
+          ${missionSticker(session, "wobble big")}
           <p class="eyebrow">Today's mission</p>
           <h1 class="display mega">${esc(session.title)}</h1>
           <p class="lead">${rich(session.intro || "")}</p>
