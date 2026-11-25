@@ -91,9 +91,34 @@
     for (let i = 1; i <= 3; i++) s += `<span class="star ${i <= n ? "on" : ""} ${size || ""}">★</span>`;
     return `<span class="stars" aria-label="${n} of 3 stars">${s}</span>`;
   }
-  function loading(msg) { view(`<section class="screen center"><div class="spinner"></div><p class="muted">${esc(msg || "Loading...")}</p></section>`); }
+  /* A scalloped sticker badge with something in the middle. */
+  function sticker(inner, cls) {
+    const n = 16, r = 84, out = 98;
+    let d = "";
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const x = 100 + r * Math.cos(a), y = 100 + r * Math.sin(a);
+      if (i === 0) d += `M${x.toFixed(1)} ${y.toFixed(1)}`;
+      else {
+        const cx = 100 + out * Math.cos(((i - 0.5) / n) * Math.PI * 2), cy = 100 + out * Math.sin(((i - 0.5) / n) * Math.PI * 2);
+        d += ` Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+    }
+    return `<div class="sticker ${cls || ""}"><svg viewBox="0 0 200 200" aria-hidden="true"><path d="${d}Z" class="sticker-edge"/><circle cx="100" cy="100" r="66" class="sticker-dash"/></svg><div class="sticker-in">${inner}</div></div>`;
+  }
+  function ticker(words) {
+    const run = words.map((w) => `<span>${esc(w)}</span><i>★</i>`).join("");
+    return `<div class="ticker" aria-hidden="true"><div class="ticker-track">${run}${run}${run}${run}</div></div>`;
+  }
+  const CLOUD = `<svg viewBox="0 0 120 60" aria-hidden="true"><path d="M20 50a16 16 0 0 1 4-31 22 22 0 0 1 40-8 18 18 0 0 1 30 10 15 15 0 0 1 6 29z" fill="#fff"/></svg>`;
+  const clouds = () => `<div class="clouds" aria-hidden="true"><i class="c1">${CLOUD}</i><i class="c2">${CLOUD}</i><i class="c3">${CLOUD}</i></div>`;
+  const ARROW = `<span class="arr" aria-hidden="true">→</span>`;
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const SUBJ = { literacy: "Literacy", numeracy: "Maths" };
+
+  function loading(msg) { view(`<section class="screen center">${sticker("⭐", "spin small")}<p class="eyebrow">${esc(msg || "Loading...")}</p></section>`); }
   function failure(msg, retry) {
-    view(`<section class="screen center"><div class="big-emoji">🛰️</div><h1>Hmm.</h1><p>${esc(msg)}</p>
+    view(`<section class="screen center"><div class="big-emoji">🛰️</div><h1 class="display">Hmm.</h1><p>${esc(msg)}</p>
       <div class="row"><button class="btn primary" data-retry>Try again</button><button class="btn ghost" data-settings>Settings</button></div></section>`);
     $("[data-retry]").onclick = retry;
     $("[data-settings]").onclick = settings;
@@ -116,9 +141,11 @@
   }
 
   function pickKid() {
-    view(`<section class="screen center">
-      <div class="big-emoji">👋</div><h1>Who's practising on this iPad?</h1>
-      <div class="kid-grid">${kids.map((k) => `<button class="kid" data-kid="${esc(k.id)}" style="--me:${esc(k.colour || "#ff7a45")}">${esc(k.name)}</button>`).join("")}</div>
+    view(`<section class="screen center pick">
+      ${clouds()}
+      <p class="eyebrow">★ Daily Missions</p>
+      <h1 class="display">Who's<br>practising?</h1>
+      <div class="kid-grid">${kids.map((k, n) => `<button class="kid" data-kid="${esc(k.id)}" style="--me:${esc(k.colour || "#8fd0f5")};--tilt:${n % 2 ? 3 : -3}deg"><span class="kid-num">${pad2(n + 1)}</span>${esc(k.name)}<span class="kid-go">That's me ${ARROW}</span></button>`).join("")}</div>
       <button class="link" data-settings>Settings</button></section>`);
     $$("[data-kid]").forEach((b) => (b.onclick = () => { saveCfg({ kid: b.dataset.kid }); start(); }));
     $("[data-settings]").onclick = () => settings();
@@ -150,30 +177,52 @@
     const doneToday = last && last.date === today();
     const draft = session ? loadDraft(session.id) : null;
 
+    const goals = [...((state.goals || {}).literacy || []), ...((state.goals || {}).numeracy || [])];
+    const goal = goals.find((g) => g.id === (state.current || {}).goalId);
+    const subj = session ? session.subject : (state.current || {}).subject;
+
     let card;
     if (ready) {
-      card = `<div class="mission-card">
-        <div class="mission-emoji">${esc(session.emoji || "🚀")}</div>
-        <div class="tag ${esc(session.subject)}">${session.subject === "numeracy" ? "Maths" : "Literacy"} · Day ${esc(session.day)}</div>
-        <h2>${esc(session.title)}</h2>
-        <p>${rich(session.intro || "")}</p>
-        <button class="btn primary big" data-go>${draft ? "Keep going" : "Start mission"}</button></div>`;
+      card = `<article class="mission ${esc(session.subject)}">
+        <div class="mission-head"><p class="eyebrow">Today's mission · ${esc(SUBJ[session.subject] || "")}</p><span class="pill">Day ${esc(session.day)} of ${esc((state.current || {}).maxDays || 4)}</span></div>
+        <div class="mission-body">
+          <div><h2 class="display">${esc(session.title)}</h2>
+          <p>${rich(session.intro || "")}</p>
+          <button class="btn primary big" data-go>${draft ? "Keep going" : "Start mission"} ${ARROW}</button></div>
+          ${sticker(`<span class="emoji">${esc(session.emoji || "🚀")}</span>`, "wobble")}
+        </div></article>`;
     } else {
-      card = `<div class="mission-card done">
-        <div class="mission-emoji">${doneToday ? "🎉" : "🌙"}</div>
-        <h2>${doneToday ? "All done for today!" : "No mission yet"}</h2>
-        <p>${session ? `Your next mission unlocks on ${esc(prettyDate(session.date))}.` : "Your next mission is being made. Check back soon."}</p>
-        ${last ? `<button class="btn ghost" data-last>See my last feedback</button>` : ""}</div>`;
+      card = `<article class="mission done">
+        <div class="mission-head"><p class="eyebrow">${doneToday ? "Mission complete" : "Coming soon"}</p></div>
+        <div class="mission-body">
+          <div><h2 class="display">${doneToday ? "All done for today!" : "No mission yet"}</h2>
+          <p>${session ? `Your next mission unlocks on ${esc(prettyDate(session.date))}.` : "Your next mission is being made. Check back soon."}</p>
+          ${last ? `<button class="btn ghost" data-last>See my last feedback ${ARROW}</button>` : ""}</div>
+          ${sticker(`<span class="emoji">${doneToday ? "🎉" : "🌙"}</span>`)}
+        </div></article>`;
     }
-    view(`<section class="screen">
-      <header class="top"><div><p class="muted">${esc(prettyDate(today()))}</p><h1>Hi ${esc(kid.name)}!</h1></div>
-        <button class="icon-btn" data-settings aria-label="Settings">⚙️</button></header>
-      <div class="badges"><div class="badge"><b>${stars}</b><span>stars</span></div>
-        <div class="badge"><b>${streak}</b><span>day streak</span></div>
-        <div class="badge"><b>${hist.length}</b><span>missions</span></div></div>
-      ${card}
-      ${hist.length ? `<h3 class="section">Recent missions</h3><ul class="history">${hist.slice(-5).reverse().map((x) =>
-        `<li data-hist="${esc(x.session)}"><span>${esc(x.title || x.session)}</span>${starRow(x.stars || 0)}</li>`).join("")}</ul>` : ""}
+    const words = [`${stars} stars`, `${streak} day streak`, `${hist.length} missions`];
+    if (goal) words.unshift(goal.title);
+    view(`<section class="screen home">
+      <div class="hero">
+        ${clouds()}
+        <header class="top"><span class="logo">★ Daily Missions</span><button class="icon-btn" data-settings aria-label="Settings">⚙️</button></header>
+        <p class="eyebrow">● ${esc(prettyDate(today()))}</p>
+        <h1 class="display mega">Hi<br>${esc(kid.name)}!</h1>
+        ${goal ? `<p class="goal-line"><b>My goal:</b> ${esc(goal.ican)}</p>` : ""}
+        ${subj ? `<span class="tilt-tag ${esc(subj)}">${esc(SUBJ[subj] || "")}</span>` : ""}
+      </div>
+      ${ticker(words)}
+      <div class="wrap">
+        ${card}
+        <div class="stats">
+          <div class="stat"><b>${stars}</b><span>Stars</span></div>
+          <div class="stat"><b>${streak}</b><span>Day streak</span></div>
+          <div class="stat"><b>${hist.length}</b><span>Missions</span></div>
+        </div>
+        ${hist.length ? `<h3 class="section">Recent missions</h3><ol class="history">${hist.slice(-5).reverse().map((x, n) =>
+          `<li data-hist="${esc(x.session)}"><span class="num">${pad2(hist.length - n)}</span><span class="name">${esc(x.title || x.session)}</span>${starRow(x.stars || 0)}<span class="arr">→</span></li>`).join("")}</ol>` : ""}
+      </div>
     </section>`);
     $("[data-settings]").onclick = () => settings();
     if (ready) $("[data-go]").onclick = () => runSession(session);
@@ -218,17 +267,17 @@
       if (i < 0) return intro();
       if (i >= items.length) return finish();
       const it = items[i];
-      const dots = items.map((x, n) => `<span class="dot ${n < i ? "done" : ""} ${n === i ? "now" : ""} ${x.boss ? "boss" : ""}"></span>`).join("");
-      view(`<section class="screen" id="session">
-        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div class="dots">${dots}</div><span class="count">${i + 1} / ${items.length}</span></header>
+      const dots = items.map((x, n) => `<span class="seg ${n < i ? "done" : ""} ${n === i ? "now" : ""} ${x.boss ? "boss" : ""}"></span>`).join("");
+      view(`<section class="screen ${esc(session.subject)}" id="session">
+        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div class="segs">${dots}</div><span class="pill">${pad2(i + 1)} / ${pad2(items.length)}</span></header>
         <article class="item ${it.boss ? "boss" : ""}">
-          ${it.boss ? `<div class="boss-tag">⚡ Boss level</div>` : ""}
+          ${it.boss ? `<div class="boss-tag">⚡ Boss level</div>` : `<p class="eyebrow">Question ${pad2(i + 1)}</p>`}
           ${it.passage ? `<div class="passage">${rich(it.passage)}</div>` : ""}
           ${it.prompt ? `<p class="prompt">${rich(it.prompt)}</p>` : ""}
           <div class="answer"></div>
-          ${it.hint ? `<div class="hint-wrap"><button class="link" data-hint>Need a hint?</button><p class="hint" hidden>${rich(it.hint)}</p></div>` : ""}
+          ${it.hint ? `<div class="hint-wrap"><button class="btn small ghost" data-hint>💡 Need a hint?</button><p class="hint" hidden>${rich(it.hint)}</p></div>` : ""}
         </article>
-        <footer class="nav"><button class="btn ghost" data-back>Back</button><button class="btn primary" data-next>${i === items.length - 1 ? "Finish" : "Next"}</button></footer>
+        <footer class="nav"><button class="btn ghost" data-back>← Back</button><button class="btn primary" data-next>${i === items.length - 1 ? "Finish" : "Next"} ${ARROW}</button></footer>
       </section>`);
       renderAnswer(it, $(".answer"));
       $("[data-home]").onclick = () => { tick(); home(); };
@@ -243,15 +292,16 @@
 
     function intro() {
       const t = session.tip;
-      view(`<section class="screen" id="session">
-        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div></div><span></span></header>
+      view(`<section class="screen ${esc(session.subject)}" id="session">
+        <header class="bar"><button class="icon-btn" data-home aria-label="Back to home">🏠</button><div></div><span class="pill">${esc(SUBJ[session.subject] || "")} · Day ${esc(session.day)}</span></header>
         <div class="intro">
-          <div class="big-emoji">${esc(session.emoji || "🚀")}</div>
-          <h1>${esc(session.title)}</h1>
+          ${sticker(`<span class="emoji">${esc(session.emoji || "🚀")}</span>`, "wobble big")}
+          <p class="eyebrow">Today's mission</p>
+          <h1 class="display mega">${esc(session.title)}</h1>
           <p class="lead">${rich(session.intro || "")}</p>
-          ${t ? `<div class="tip"><h3>💡 ${esc(t.title || "Tip")}</h3><p>${rich(t.text || "")}</p>${t.example ? `<p class="example">${rich(t.example)}</p>` : ""}</div>` : ""}
+          ${t ? `<div class="tip"><span class="tip-tag">💡 Tip</span><h3 class="display">${esc(t.title || "Tip")}</h3><p>${rich(t.text || "")}</p>${t.example ? `<p class="example">${rich(t.example)}</p>` : ""}</div>` : ""}
         </div>
-        <footer class="nav"><span></span><button class="btn primary" data-next>Let's go</button></footer></section>`);
+        <footer class="nav"><span></span><button class="btn primary big" data-next>Let's go ${ARROW}</button></footer></section>`);
       $("[data-home]").onclick = () => { tick(); home(); };
       $("[data-next]").onclick = () => show(0);
     }
@@ -281,9 +331,11 @@
           break;
         }
         case "fill": {
-          const parts = String(it.template || "").split("[]");
           const vals = a.boxes || [];
-          box.innerHTML = `<p class="fill">${parts.map((p, n) => rich(p) + (n < parts.length - 1 ? `<input class="box" inputmode="${it.numeric === false ? "text" : "decimal"}" autocapitalize="off" autocorrect="off" spellcheck="false" data-n="${n}" value="${esc(vals[n] || "")}">` : "")).join("")}</p>`;
+          let n = 0;
+          const input = () => { const k = n++; return `<input class="box" inputmode="${it.numeric === false ? "text" : "decimal"}" autocapitalize="off" autocorrect="off" spellcheck="false" data-n="${k}" value="${esc(vals[k] || "")}">`; };
+          box.innerHTML = `<div class="fill">${String(it.template || "").split("\n").map((row) =>
+            `<div class="fill-row">${row.split("[]").map((p, i, all) => `<span>${rich(p)}</span>` + (i < all.length - 1 ? input() : "")).join("")}</div>`).join("")}</div>`;
           const inputs = $$("input", box);
           inputs.forEach((inp) => (inp.oninput = () => save({ boxes: inputs.map((x) => x.value) })));
           break;
@@ -312,12 +364,14 @@
     function finish() {
       const missing = items.filter((it) => it.type !== "read" && !answered(it)).map((it, n) => items.indexOf(it) + 1);
       view(`<section class="screen center" id="session">
-        <div class="big-emoji">🏁</div><h1>Mission complete!</h1>
+        ${clouds()}
+        ${sticker('<span class="emoji">🏁</span>', "wobble big")}
+        <p class="eyebrow">Nice one</p><h1 class="display mega">Mission<br>complete!</h1>
         ${missing.length ? `<p class="warn">You haven't answered question${missing.length > 1 ? "s" : ""} ${missing.join(", ")} yet. You can go back, or send it anyway.</p>` : ""}
-        <p class="lead">How did today feel?</p>
+        <p class="lead"><b>How did today feel?</b></p>
         <div class="rating">${[["easy", "😎", "Easy"], ["ok", "🙂", "Just right"], ["tricky", "🤔", "Tricky"]].map(([v, e, l]) =>
-          `<button class="rate ${d.rating === v ? "on" : ""}" data-rate="${v}"><span>${e}</span>${l}</button>`).join("")}</div>
-        <div class="row"><button class="btn ghost" data-back>Back</button><button class="btn primary big" data-send ${d.rating ? "" : "disabled"}>Send to Claude</button></div>
+          `<button class="rate ${d.rating === v ? "on" : ""}" data-rate="${v}" style="--tilt:${v === "easy" ? -3 : v === "tricky" ? 3 : 0}deg"><span>${e}</span>${l}</button>`).join("")}</div>
+        <div class="row"><button class="btn ghost" data-back>← Back</button><button class="btn primary big" data-send ${d.rating ? "" : "disabled"}>Send to Claude ${ARROW}</button></div>
         <p class="error" hidden></p></section>`);
       $$("[data-rate]").forEach((b) => (b.onclick = () => {
         d.rating = b.dataset.rate; saveDraft(session.id, d);
@@ -378,8 +432,10 @@
     clearTimeout(pollTimer);
     const began = Date.now();
     view(`<section class="screen center">
-      <div class="marking"><span>✏️</span></div>
-      <h1>Sent! Claude is marking your work.</h1>
+      ${clouds()}
+      ${sticker('<span class="emoji">✏️</span>', "spin big")}
+      <p class="eyebrow">Sent!</p>
+      <h1 class="display">Claude is marking<br>your work</h1>
       <p class="lead">This takes a few minutes. You can wait here, or close the app and come back.</p>
       <p class="muted" data-status></p>
       <button class="btn ghost" data-home>Back to home</button></section>`);
@@ -402,24 +458,29 @@
   /* ---------- feedback ---------- */
   function feedback(fb, fresh) {
     if (fb.status === "error") {
-      view(`<section class="screen center"><div class="big-emoji">📮</div><h1>Your work is safely in!</h1>
+      view(`<section class="screen center">${sticker('<span class="emoji">📮</span>', "big")}<h1 class="display">Your work is<br>safely in!</h1>
         <p class="lead">${esc(fb.kidMessage || "Claude couldn't mark this one, so Dad will check it.")}</p>
         <button class="btn primary" data-home>Back to home</button></section>`);
       $("[data-home]").onclick = home;
       return;
     }
-    const icons = { correct: "✅", partly: "🟡", not_yet: "🔁", not_marked: "" };
+    const labels = { correct: "Nailed it", partly: "Nearly", not_yet: "Try again" };
     const items = Object.entries(fb.items || {}).filter(([, v]) => v && v.result !== "not_marked");
-    view(`<section class="screen">
-      <div class="result ${fresh ? "pop" : ""}">
+    view(`<section class="screen results">
+      <div class="hero result ${fresh ? "pop" : ""}">
+        ${clouds()}
+        <p class="eyebrow">Claude's marking</p>
         ${starRow(fb.stars || 0, "huge")}
-        <h1>${fb.stars >= 3 ? "Brilliant!" : fb.stars === 2 ? "Great work!" : "Good effort!"}</h1>
+        <h1 class="display mega">${fb.stars >= 3 ? "Brilliant!" : fb.stars === 2 ? "Great work!" : "Good effort!"}</h1>
         <p class="lead">${rich(fb.kidMessage || "")}</p>
       </div>
-      ${items.length ? `<ul class="marks">${items.map(([id, v]) =>
-        `<li><span class="mark-icon">${icons[v.result] || "•"}</span><div><b>Question ${esc(id.replace(/^q/, ""))}</b><p>${rich(v.comment || "")}</p></div></li>`).join("")}</ul>` : ""}
-      ${fb.goal && fb.goal.next ? `<div class="tip"><h3>${fb.goal.status === "achieved" ? "🏆 Goal achieved!" : "🔭 Next time"}</h3><p>${rich(fb.goal.next)}</p></div>` : ""}
-      <footer class="nav"><span></span><button class="btn primary" data-home>Back to home</button></footer>
+      ${ticker([`${fb.stars || 0} stars`, `${fb.correct ?? ""} of ${fb.total ?? ""} correct`, fb.goal && fb.goal.status === "achieved" ? "Goal achieved" : "Keep going"])}
+      <div class="wrap">
+      ${items.length ? `<ol class="marks">${items.map(([id, v]) =>
+        `<li class="${esc(v.result)}"><span class="num">${pad2(id.replace(/^q/, ""))}</span><p>${rich(v.comment || "")}</p><span class="verdict">${labels[v.result] || ""}</span></li>`).join("")}</ol>` : ""}
+      ${fb.goal && fb.goal.next ? `<div class="tip"><span class="tip-tag">${fb.goal.status === "achieved" ? "🏆 Goal achieved" : "🔭 Next time"}</span><p>${rich(fb.goal.next)}</p></div>` : ""}
+      </div>
+      <footer class="nav"><span></span><button class="btn primary" data-home>Back to home ${ARROW}</button></footer>
     </section>`);
     $("[data-home]").onclick = home;
     if (fresh && fb.stars >= 3) confetti();
@@ -431,7 +492,7 @@
     for (let i = 0; i < 60; i++) {
       const s = document.createElement("i");
       s.style.left = Math.random() * 100 + "%";
-      s.style.background = ["#ff7a45", "#ffc53d", "#2f7cf6", "#21a366", "#ff5d9e"][i % 5];
+      s.style.background = ["#ffc93c", "#f7a6cf", "#8fd0f5", "#c3adf7", "#111111"][i % 5];
       s.style.animationDelay = Math.random() * 0.8 + "s";
       s.style.transform = `rotate(${Math.random() * 360}deg)`;
       box.append(s);
@@ -444,7 +505,7 @@
   function settings(first) {
     const c = cfg();
     view(`<section class="screen narrow">
-      <header class="top"><h1>${first ? "Set up this iPad" : "Settings"}</h1>${first ? "" : `<button class="icon-btn" data-close aria-label="Close">✖️</button>`}</header>
+      <header class="top"><h1 class="display">${first ? "Set up this iPad" : "Settings"}</h1>${first ? "" : `<button class="icon-btn" data-close aria-label="Close">✖️</button>`}</header>
       <p class="muted">For grown ups. The key is saved on this iPad only.</p>
       <label class="setting">GitHub key<input type="password" data-token autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${c.token ? "Saved (paste a new one to replace it)" : "github_pat_..."}"></label>
       <label class="setting">Data repo<input data-repo autocapitalize="off" spellcheck="false" value="${esc(c.repo)}"></label>

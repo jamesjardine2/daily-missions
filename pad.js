@@ -195,7 +195,7 @@
     const penBtn = button("✏️", "Pencil", () => setMode("pen"), "on");
     const swatches = [];
     if (opts.colours) {
-      for (const c of ["#1f2a44", "#ff5d5d", "#2f7cf6", "#21a366", "#ffb020"]) {
+      for (const c of ["#1f2a44", "#ff4f8b", "#2b8fe0", "#16a34a", "#f5a300"]) {
         const sw = button("", "Colour", () => { colour = c; setMode("pen"); swatches.forEach((x) => x.classList.toggle("on", x === sw)); }, "swatch");
         sw.style.setProperty("--sw", c);
         if (c === INK) sw.classList.add("on");
